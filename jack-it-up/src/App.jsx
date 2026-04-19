@@ -645,3 +645,181 @@ function DashboardTab({ xp, badges, athlete, onEarnXP, dormHacks, setDormHacks }
     </div>
   );
 }
+
+// ============================================================
+// COMPONENT: SCHOLARSHIP TAB
+// ============================================================
+function ScholarshipTab({ athlete }) {
+  const [gpa, setGpa]         = useState(3.1);
+  const [credits, setCredits] = useState(15);
+  const [picked, setPicked]   = useState([]);
+  const [filter, setFilter]   = useState("all");
+  const [showSim, setShowSim] = useState(false);
+
+  const onTrack = gpa >= PP.minGPA && credits >= PP.minCredits;
+  const projGpa = picked.length > 0
+    ? parseFloat(Math.min(4.0, Math.max(0, gpa + picked.reduce((s, p) => s + parseFloat(p.gpaD), 0) / picked.length)).toFixed(2))
+    : gpa;
+
+  const toggleProf = p => setPicked(prev =>
+    prev.find(x => x.id === p.id) ? prev.filter(x => x.id !== p.id) : prev.length < 5 ? [...prev, p] : prev
+  );
+
+  const vis = filter === "safe" ? PROFESSORS.filter(p => p.safe)
+            : filter === "risky" ? PROFESSORS.filter(p => !p.safe)
+            : PROFESSORS;
+
+  const rules = [
+    ["GPA ≥ 2.5",            gpa >= PP.minGPA,       `${gpa.toFixed(2)}`],
+    ["15+ Credit Hrs/Sem",   credits >= PP.minCredits,`${credits} hrs`],
+    ["Full-Time Enrolled",   credits >= PP.fullTimeMin, credits >= 12 ? "Full-time" : "Part-time"],
+    ["No Incomplete Grades", true, "0 flagged"],
+    ...(athlete ? [
+      ["NCAA GPA ≥ 2.5",    gpa >= PP.ncaaMinGPA, `${gpa.toFixed(2)}`],
+      ["Study Hall 8hr/wk", false, "Track in Dashboard"],
+    ] : []),
+  ];
+
+  const r = 40, circ = 2 * Math.PI * r, fill = Math.min(gpa / 4, 1);
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"20px" }}>
+
+      {/* Purple Promise Engine */}
+      <div style={{ background:"#fff", borderRadius:"16px", border:"1px solid #E9D5FF", overflow:"hidden" }}>
+        <div style={{ background:`linear-gradient(135deg,${C.dark},${C.purple})`, padding:"18px 24px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            <h2 style={{ fontFamily:"'Playfair Display',serif", color:"#fff", fontSize:"20px", margin:"0 0 2px", fontWeight:900 }}>💜 Purple Promise Engine</h2>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", color:`${C.gold}90`, fontSize:"10px", margin:0, letterSpacing:"1.5px", textTransform:"uppercase" }}>Scholarship Safety Dashboard · SFA Financial Aid</p>
+          </div>
+          <Pill label={onTrack ? "✓ SAFE" : "⚠ AT RISK"} color={onTrack ? "#fff" : C.dark} bg={onTrack ? C.green : C.red} />
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto", gap:"24px", padding:"24px", alignItems:"start" }}>
+
+          {/* GPA Ring */}
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r={r} fill="none" stroke="#E9D5FF" strokeWidth="10" />
+              <circle cx="50" cy="50" r={r} fill="none" stroke={gpa >= PP.minGPA ? C.gold : C.red} strokeWidth="10"
+                strokeDasharray={`${circ * fill} ${circ * (1 - fill)}`} strokeLinecap="round" transform="rotate(-90 50 50)"
+                style={{ transition:"stroke-dasharray 0.7s ease" }} />
+              <text x="50" y="46" textAnchor="middle" fontSize="17" fontWeight="bold" fill={C.dark} fontFamily="Playfair Display,serif">{gpa.toFixed(2)}</text>
+              <text x="50" y="60" textAnchor="middle" fontSize="9" fill="#9ca3af" fontFamily="DM Sans,sans-serif">GPA</text>
+            </svg>
+            <input type="range" min={0} max={4} step={0.01} value={gpa} onChange={e => setGpa(parseFloat(e.target.value))} style={{ width:"90px", accentColor:C.purple }} />
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"9px", color:"#9ca3af" }}>Drag to simulate</span>
+          </div>
+
+          {/* Credits + NCAA */}
+          <div>
+            <div style={{ background:"#F9F5FF", borderRadius:"12px", padding:"16px", marginBottom:"12px" }}>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"10px", color:"#9ca3af", margin:"0 0 8px", textTransform:"uppercase", letterSpacing:"1px" }}>Credit Hours This Semester</p>
+              <div style={{ display:"flex", alignItems:"center", gap:"14px" }}>
+                <input type="number" min={1} max={21} value={credits} onChange={e => setCredits(parseInt(e.target.value) || 0)}
+                  style={{ width:"60px", fontFamily:"'Playfair Display',serif", fontSize:"28px", fontWeight:900, color:C.purple, border:"none", background:"transparent", outline:"none" }} />
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"12px", color:credits >= 15 ? C.green : C.red, fontWeight:700 }}>
+                  {credits >= 15 ? "✓ Meets 15-hr rule" : `⚠ Need ${15 - credits} more hrs`}
+                </span>
+              </div>
+            </div>
+            {athlete && (
+              <div style={{ background:`${C.gold}15`, border:`1px solid ${C.gold}40`, borderRadius:"12px", padding:"14px" }}>
+                <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"11px", fontWeight:700, color:C.dark, margin:"0 0 10px" }}>🏆 NCAA COMPLIANCE OVERLAY</p>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px" }}>
+                  {[["Study Hall","8 hrs/week"],["NCAA Min GPA","2.500"],["Credits/Year","24 minimum"],["Travel Days","Check Fridays"]].map(([k, v]) => (
+                    <div key={k} style={{ background:"rgba(255,255,255,0.7)", borderRadius:"8px", padding:"8px 10px" }}>
+                      <p style={{ fontFamily:"'Playfair Display',serif", fontSize:"15px", fontWeight:900, color:C.dark, margin:0 }}>{v}</p>
+                      <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"9px", color:"#6b7280", margin:0, textTransform:"uppercase" }}>{k}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Rules Panel */}
+          <div style={{ background:onTrack ? "#f0fdf4" : "#fef2f2", border:`1px solid ${onTrack ? "#86efac" : "#fca5a5"}`, borderRadius:"12px", padding:"16px", minWidth:"210px" }}>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:"13px", color:onTrack ? C.green : C.red, margin:"0 0 14px" }}>
+              {onTrack ? "✅ Scholarship SAFE" : "❌ Scholarship AT RISK"}
+            </p>
+            {rules.map(([rule, ok, val]) => (
+              <div key={rule} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"9px" }}>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"12px", color:"#374151" }}>{rule}</span>
+                <div style={{ display:"flex", gap:"6px", alignItems:"center" }}>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"10px", color:"#9ca3af" }}>{val}</span>
+                  <span style={{ fontSize:"13px", color:ok ? C.green : C.red }}>{ok ? "✓" : "✗"}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Pre-Reg Simulator toggle */}
+      <button onClick={() => setShowSim(s => !s)}
+        style={{ background:`linear-gradient(135deg,${C.purple},${C.dark})`, color:"#fff", border:"none", borderRadius:"14px", padding:"16px 22px", cursor:"pointer", fontFamily:"'Playfair Display',serif", fontWeight:700, fontSize:"17px", textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <span>🔮 Pre-Registration Simulator — Pick Scholarship-Safe Professors</span>
+        <span style={{ fontSize:"18px" }}>{showSim ? "▲" : "▼"}</span>
+      </button>
+
+      {showSim && (
+        <div style={{ background:"#fff", borderRadius:"16px", border:"1px solid #E9D5FF", padding:"24px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"16px", flexWrap:"wrap", gap:"10px" }}>
+            {picked.length > 0 && (
+              <div style={{ background:`linear-gradient(135deg,${C.purple},${C.dark})`, borderRadius:"12px", padding:"10px 18px", display:"flex", gap:"18px", alignItems:"center" }}>
+                <div>
+                  <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"9px", color:"rgba(255,255,255,0.5)", margin:0, letterSpacing:"1.5px" }}>PROJECTED GPA</p>
+                  <p style={{ fontFamily:"'Playfair Display',serif", fontSize:"26px", color:projGpa >= 2.5 ? C.gold : "#f87171", margin:0, fontWeight:900 }}>{projGpa}</p>
+                </div>
+                <Pill label={projGpa >= 2.5 ? "SCHOLARSHIP SAFE ✓" : "GPA AT RISK ✗"} color={projGpa >= 2.5 ? C.dark : "#fff"} bg={projGpa >= 2.5 ? C.gold : C.red} />
+              </div>
+            )}
+            <div style={{ display:"flex", gap:"6px" }}>
+              {[["all","All"],["safe","✅ Safe"],["risky","⚠️ Risky"]].map(([v, l]) => (
+                <button key={v} onClick={() => setFilter(v)}
+                  style={{ background:filter === v ? C.purple : "#F3E8FF", color:filter === v ? "#fff" : C.purple, border:"none", borderRadius:"8px", padding:"6px 14px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:"12px" }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", maxHeight:"400px", overflowY:"auto" }}>
+            {vis.map(prof => {
+              const sel = !!picked.find(x => x.id === prof.id);
+              return (
+                <div key={prof.id} onClick={() => toggleProf(prof)}
+                  style={{ border:`2px solid ${sel ? C.purple : prof.safe ? "#bbf7d0" : "#fecdd3"}`, borderRadius:"12px", padding:"14px", cursor:"pointer", background:sel ? "#F9F5FF" : "#fff", transition:"all 0.15s", position:"relative" }}>
+                  <div style={{ position:"absolute", top:"10px", right:"10px" }}>
+                    <Pill label={prof.safe ? "SAFE" : "RISKY"} color={prof.safe ? "#16a34a" : "#fff"} bg={prof.safe ? "#d1fae5" : C.red} />
+                  </div>
+                  {sel && (
+                    <div style={{ position:"absolute", top:"10px", left:"10px", background:C.purple, borderRadius:"50%", width:"18px", height:"18px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <span style={{ color:"#fff", fontSize:"10px", fontWeight:900 }}>✓</span>
+                    </div>
+                  )}
+                  <p style={{ fontFamily:"'Playfair Display',serif", fontWeight:700, fontSize:"14px", color:C.dark, margin:"0 0 2px", paddingRight:"52px" }}>{prof.name}</p>
+                  <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"11px", color:"#6b7280", margin:"0 0 10px" }}>{prof.course}</p>
+                  <div style={{ display:"flex", gap:"14px", marginBottom:"8px" }}>
+                    {[["⭐", prof.rating, C.purple], ["🔥", prof.diff, prof.diff > 3.5 ? C.red : C.green], ["📈", prof.gpaD, parseFloat(prof.gpaD) >= 0 ? C.green : C.red]].map(([ic, v, col]) => (
+                      <div key={ic} style={{ textAlign:"center" }}>
+                        <p style={{ fontFamily:"'Playfair Display',serif", fontSize:"15px", fontWeight:900, color:col, margin:0 }}>{v}</p>
+                        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"9px", color:"#9ca3af", margin:0 }}>{ic}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display:"flex", gap:"4px", flexWrap:"wrap" }}>
+                    {prof.tags.map(t => (
+                      <span key={t} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"10px", background:"#F3E8FF", color:C.purple, padding:"2px 6px", borderRadius:"4px" }}>{t}</span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

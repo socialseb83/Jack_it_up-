@@ -181,4 +181,316 @@ const webAuthn = {
   clear:            () => { localStorage.removeItem("ll_credId"); localStorage.removeItem("ll_username"); },
 };
 
-// ── END OF PART 1 ── (LoginScreen and beyond follow in Part 2)
+// ============================================================
+// COMPONENT: LOGIN SCREEN
+// ============================================================
+function LoginScreen({ onLogin }) {
+  const [phase, setPhase]     = useState("landing"); // landing | register | pin
+  const [name, setName]       = useState("");
+  const [sid, setSid]         = useState("");
+  const [parent, setParent]   = useState("");
+  const [pin, setPin]         = useState("");
+  const [error, setError]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const hasReg = webAuthn.hasRegistered();
+
+  const doRegister = async () => {
+    if (!name.trim() || !sid.trim()) { setError("Name and Student ID are required."); return; }
+    setLoading(true); setError("");
+    const ok = await webAuthn.register(`${sid}_${name.replace(/\s+/g,"_")}`);
+    if (ok) {
+      localStorage.setItem("ll_sid", sid);
+      localStorage.setItem("ll_displayName", name);
+      localStorage.setItem("ll_parentEmail", parent);
+      onLogin({ name, studentId:sid, parentEmail:parent });
+    } else {
+      setError("Biometric unavailable on this device. Set a PIN instead.");
+      setPhase("pin");
+    }
+    setLoading(false);
+  };
+
+  const doAuth = async () => {
+    setLoading(true); setError("");
+    const ok = await webAuthn.authenticate();
+    if (ok) {
+      onLogin({
+        name:        localStorage.getItem("ll_displayName") || "Lumberjack",
+        studentId:   localStorage.getItem("ll_sid")         || "demo",
+        parentEmail: localStorage.getItem("ll_parentEmail") || "",
+      });
+    } else {
+      setError("Biometric failed. Use PIN.");
+      setPhase("pin");
+    }
+    setLoading(false);
+  };
+
+  const doPinLogin = () => {
+    const saved = localStorage.getItem("ll_pin");
+    if (!saved) {
+      localStorage.setItem("ll_pin", pin);
+      localStorage.setItem("ll_sid", sid || "demo");
+      localStorage.setItem("ll_displayName", name || "Lumberjack");
+      onLogin({ name:name||"Lumberjack", studentId:sid||"demo", parentEmail:parent });
+      return;
+    }
+    if (pin === saved) onLogin({
+      name:        localStorage.getItem("ll_displayName") || "Lumberjack",
+      studentId:   localStorage.getItem("ll_sid")         || "demo",
+      parentEmail: localStorage.getItem("ll_parentEmail") || "",
+    });
+    else setError("Incorrect PIN.");
+  };
+
+  const demoLogin = () => onLogin({ name:"Jasmine T.", studentId:"SFA2026001", parentEmail:"", isDemo:true });
+
+  return (
+    <div style={{ minHeight:"100vh", background:`linear-gradient(150deg,${C.ink} 0%,${C.dark} 35%,${C.purple} 70%,#7B2FBE 100%)`, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px", fontFamily:"'DM Sans',sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&display=swap');
+        @keyframes floatIn { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes glow { 0%,100%{box-shadow:0 0 20px rgba(200,169,81,0.3)} 50%{box-shadow:0 0 40px rgba(200,169,81,0.6)} }
+        .lf-input { width:100%; border:1.5px solid rgba(255,255,255,0.2); border-radius:12px; padding:13px 16px; background:rgba(255,255,255,0.1); color:#fff; font-family:'DM Sans',sans-serif; font-size:14px; outline:none; box-sizing:border-box; transition:border-color 0.2s; }
+        .lf-input::placeholder { color:rgba(255,255,255,0.4); }
+        .lf-input:focus { border-color:${C.gold}; }
+        .lf-btn { width:100%; border:none; border-radius:14px; padding:14px; cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:800; font-size:14px; letter-spacing:0.4px; transition:all 0.2s; }
+        .lf-btn:hover:not(:disabled) { filter:brightness(1.1); transform:translateY(-1px); }
+        .lf-btn:disabled { opacity:0.6; cursor:not-allowed; }
+      `}</style>
+
+      <div style={{ width:"100%", maxWidth:"420px", animation:"floatIn 0.5s ease-out" }}>
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:"28px" }}>
+          <div style={{ background:C.gold, display:"inline-block", borderRadius:"16px", padding:"10px 22px", marginBottom:"14px", animation:"glow 3s ease-in-out infinite" }}>
+            <span style={{ fontFamily:"'Playfair Display',serif", fontWeight:900, fontSize:"22px", color:C.dark }}>🪓 Jack-it-UP!</span>
+          </div>
+          <p style={{ color:"rgba(255,255,255,0.55)", fontSize:"12px", margin:0, letterSpacing:"2px", textTransform:"uppercase" }}>Stephen F. Austin State University</p>
+        </div>
+
+        {/* Shaniqua chip */}
+        <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:"16px", padding:"14px 18px", marginBottom:"22px", display:"flex", alignItems:"center", gap:"12px", border:"1px solid rgba(255,255,255,0.12)" }}>
+          <div style={{ width:"44px", height:"44px", borderRadius:"50%", overflow:"hidden", border:`2.5px solid ${C.gold}`, flexShrink:0 }}>
+            <img src={shaniquaAvatar} alt="Shaniqua" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top" }} />
+          </div>
+          <div>
+            <p style={{ fontFamily:"'Playfair Display',serif", fontSize:"14px", color:C.goldLight, margin:0, fontWeight:700 }}>Shaniqua's got you! 💜</p>
+            <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.55)", margin:0, lineHeight:1.5 }}>Your AI mentor, scholarship tracker, and campus guide — all in one.</p>
+          </div>
+        </div>
+
+        {/* Auth Card */}
+        <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:"20px", padding:"26px", border:"1px solid rgba(255,255,255,0.1)", backdropFilter:"blur(10px)" }}>
+
+          {/* LANDING */}
+          {phase === "landing" && (
+            <div>
+              <h2 style={{ fontFamily:"'Playfair Display',serif", color:"#fff", fontSize:"20px", margin:"0 0 18px", textAlign:"center", fontWeight:900 }}>
+                {hasReg ? "Welcome Back 🪓" : "Create Your Account"}
+              </h2>
+              {!hasReg && (
+                <div style={{ display:"flex", flexDirection:"column", gap:"10px", marginBottom:"14px" }}>
+                  <input className="lf-input" placeholder="Full Name"                          value={name}   onChange={e=>setName(e.target.value)}   />
+                  <input className="lf-input" placeholder="SFA Student ID"                     value={sid}    onChange={e=>setSid(e.target.value)}    />
+                  <input className="lf-input" type="email" placeholder="Parent Email (for badge alerts)" value={parent} onChange={e=>setParent(e.target.value)} />
+                </div>
+              )}
+              {hasReg && <p style={{ color:"rgba(255,255,255,0.55)", fontSize:"13px", textAlign:"center", marginBottom:"18px" }}>Use your device biometric to log in instantly.</p>}
+              <button onClick={hasReg ? doAuth : () => setPhase("register")} disabled={loading} className="lf-btn"
+                style={{ background:`linear-gradient(135deg,${C.gold},${C.goldLight})`, color:C.dark, marginBottom:"10px" }}>
+                {loading ? "Authenticating..." : hasReg ? "🔐 FaceID / TouchID Login" : "Continue →"}
+              </button>
+              <button onClick={() => setPhase("pin")} className="lf-btn"
+                style={{ background:"rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.75)", marginBottom:"10px" }}>
+                {hasReg ? "Use PIN" : "Skip Biometric — Use PIN"}
+              </button>
+              <button onClick={demoLogin} className="lf-btn"
+                style={{ background:"transparent", color:"rgba(255,255,255,0.4)", border:"1px dashed rgba(255,255,255,0.2)" }}>
+                Demo Mode (No Account)
+              </button>
+              {hasReg && (
+                <div style={{ textAlign:"center", marginTop:"14px" }}>
+                  <button onClick={() => { webAuthn.clear(); setPhase("landing"); window.location.reload(); }}
+                    style={{ background:"none", border:"none", color:"rgba(255,255,255,0.3)", fontSize:"11px", cursor:"pointer", textDecoration:"underline" }}>
+                    New student? Start over
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* BIOMETRIC REGISTER */}
+          {phase === "register" && (
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:"48px", margin:"0 0 10px" }}>🔐</p>
+              <h2 style={{ fontFamily:"'Playfair Display',serif", color:"#fff", fontSize:"19px", margin:"0 0 10px", fontWeight:900 }}>Enable Biometric Login</h2>
+              <p style={{ color:"rgba(255,255,255,0.55)", fontSize:"12px", margin:"0 0 20px", lineHeight:1.6 }}>
+                FaceID or TouchID — instant, secure access. Your biometric data never leaves your device.
+              </p>
+              <button onClick={doRegister} disabled={loading} className="lf-btn"
+                style={{ background:`linear-gradient(135deg,${C.gold},${C.goldLight})`, color:C.dark, marginBottom:"10px" }}>
+                {loading ? "Setting Up..." : "✨ Enable FaceID / TouchID"}
+              </button>
+              <button onClick={() => setPhase("pin")} className="lf-btn"
+                style={{ background:"rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.7)" }}>
+                Set PIN Instead
+              </button>
+            </div>
+          )}
+
+          {/* PIN */}
+          {phase === "pin" && (
+            <div>
+              <h2 style={{ fontFamily:"'Playfair Display',serif", color:"#fff", fontSize:"19px", margin:"0 0 14px", textAlign:"center", fontWeight:900 }}>
+                {localStorage.getItem("ll_pin") ? "Enter PIN" : "Create 4-Digit PIN"}
+              </h2>
+              {!localStorage.getItem("ll_pin") && (
+                <>
+                  <input className="lf-input" placeholder="Your name"      value={name} onChange={e=>setName(e.target.value)} style={{ marginBottom:"10px" }} />
+                  <input className="lf-input" placeholder="SFA Student ID" value={sid}  onChange={e=>setSid(e.target.value)}  style={{ marginBottom:"10px" }} />
+                </>
+              )}
+              <input className="lf-input" type="password" maxLength={4} inputMode="numeric" placeholder="• • • •"
+                style={{ textAlign:"center", fontSize:"26px", letterSpacing:"10px", marginBottom:"14px" }}
+                value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,4))} />
+              <button onClick={doPinLogin} className="lf-btn"
+                style={{ background:`linear-gradient(135deg,${C.gold},${C.goldLight})`, color:C.dark }}>
+                {localStorage.getItem("ll_pin") ? "Log In →" : "Set PIN & Enter →"}
+              </button>
+            </div>
+          )}
+
+          {error && <p style={{ color:"#fca5a5", fontSize:"12px", textAlign:"center", marginTop:"12px", fontWeight:600 }}>⚠️ {error}</p>}
+        </div>
+
+        <p style={{ color:"rgba(255,255,255,0.25)", fontSize:"10px", textAlign:"center", marginTop:"18px", lineHeight:1.6 }}>
+          Stephen F. Austin State University · Nacogdoches, TX<br />
+          UPD Safe Ride: (936) 468-2608 · Available 24/7
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// COMPONENT: XP SYSTEM HEADER CARD
+// ============================================================
+function XPSystem({ xp, badges }) {
+  const level   = Math.floor(xp / 100) + 1;
+  const inLevel = xp % 100;
+  return (
+    <div style={{ background:`linear-gradient(135deg,${C.dark},${C.purple})`, borderRadius:"16px", padding:"18px 22px", marginBottom:"20px", boxShadow:`0 8px 32px rgba(75,24,105,0.25)` }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"12px" }}>
+        <div>
+          <p style={{ fontFamily:"'Playfair Display',serif", fontSize:"18px", fontWeight:900, color:C.gold, margin:0 }}>Level {level} Lumberjack</p>
+          <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"11px", color:"rgba(255,255,255,0.5)", margin:0 }}>{xp} XP total · {inLevel}/100 to Level {level+1}</p>
+        </div>
+        <div style={{ textAlign:"right" }}>
+          <p style={{ fontFamily:"'Playfair Display',serif", fontSize:"26px", fontWeight:900, color:"#fff", margin:0 }}>{xp}</p>
+          <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"9px", color:`${C.gold}80`, margin:0, letterSpacing:"1.5px" }}>LUMBERJACK XP</p>
+        </div>
+      </div>
+      <div style={{ height:"8px", background:"rgba(255,255,255,0.12)", borderRadius:"4px", overflow:"hidden", marginBottom:"14px" }}>
+        <div style={{ width:`${inLevel}%`, height:"100%", background:`linear-gradient(90deg,${C.gold},${C.goldLight})`, borderRadius:"4px", transition:"width 0.8s cubic-bezier(0.34,1.56,0.64,1)" }} />
+      </div>
+      <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
+        {ALL_BADGES.filter(b=>badges.includes(b.id)).map(b=>(
+          <div key={b.id} title={b.desc} style={{ background:"rgba(200,169,81,0.18)", border:`1px solid ${C.gold}55`, borderRadius:"8px", padding:"4px 10px", display:"flex", alignItems:"center", gap:"5px" }}>
+            <span style={{ fontSize:"13px" }}>{b.icon}</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"10px", color:C.goldLight, fontWeight:700 }}>{b.name}</span>
+          </div>
+        ))}
+        {badges.length === 0 && <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"12px", color:"rgba(255,255,255,0.4)", margin:0 }}>Complete a study session to earn your first badge! (+50 XP)</p>}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// COMPONENT: HEADER
+// ============================================================
+function Header({ user, athlete, setAthlete, vibe, setVibe, safeRide, onSafeRide, xp, onLogout }) {
+  const level = Math.floor(xp / 100) + 1;
+  return (
+    <header style={{ background:`linear-gradient(135deg,${C.ink} 0%,${C.dark} 50%,${C.purple} 100%)`, borderBottom:`3px solid ${C.gold}`, position:"sticky", top:0, zIndex:999, boxShadow:"0 4px 24px rgba(26,10,46,0.5)" }}>
+      <div style={{ maxWidth:"1280px", margin:"0 auto", padding:"0 16px" }}>
+        {/* Digital ID strip */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom:"1px solid rgba(200,169,81,0.2)", flexWrap:"wrap", gap:"6px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+            <div style={{ background:C.gold, borderRadius:"8px", padding:"3px 12px", display:"flex", alignItems:"center", gap:"6px" }}>
+              <span style={{ fontSize:"13px" }}>🪓</span>
+              <span style={{ fontFamily:"'Playfair Display',serif", fontWeight:900, color:C.dark, fontSize:"11px", letterSpacing:"1px" }}>SFA DIGITAL ID</span>
+            </div>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", color:"rgba(255,255,255,0.7)", fontSize:"11px" }}>{user.name} · {user.studentId} · Spring 2026</span>
+            <span style={{ background:"rgba(255,255,255,0.1)", borderRadius:"6px", padding:"2px 8px", fontFamily:"'DM Sans',sans-serif", fontSize:"10px", color:C.gold, fontWeight:700 }}>Lv.{level} · {xp} XP</span>
+          </div>
+          <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
+            <button onClick={() => onSafeRide(!safeRide)}
+              style={{ background:safeRide?"#16a34a":C.red, color:"#fff", border:"none", borderRadius:"8px", padding:"5px 14px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:"11px", transition:"background 0.2s" }}>
+              🚗 {safeRide ? "SAFE RIDE ACTIVE" : "SAFE RIDE"}
+            </button>
+            <button onClick={onLogout} style={{ background:"none", border:"1px solid rgba(255,255,255,0.15)", borderRadius:"8px", padding:"5px 12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:"11px", color:"rgba(255,255,255,0.45)" }}>
+              Log Out
+            </button>
+          </div>
+        </div>
+        {/* Nav row */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 0", flexWrap:"wrap", gap:"10px" }}>
+          <div>
+            <h1 style={{ fontFamily:"'Playfair Display',serif", fontWeight:900, color:"#fff", fontSize:"22px", margin:0 }}>Jack-it-<span style={{ color:C.gold }}>UP!</span></h1>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", color:`${C.gold}70`, fontSize:"9px", margin:0, letterSpacing:"2.5px", textTransform:"uppercase" }}>SFA Student Success Platform {user.isDemo ? "· Demo" : ""}</p>
+          </div>
+          <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
+            <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:"12px", padding:"4px", display:"flex" }}>
+              {[["beast","⚡ BEAST"],["social","🎉 SOCIAL"]].map(([id,lbl])=>(
+                <button key={id} onClick={()=>setVibe(id)}
+                  style={{ background:vibe===id?C.gold:"transparent", color:vibe===id?C.dark:"rgba(255,255,255,0.55)", border:"none", borderRadius:"9px", padding:"7px 14px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:"12px", transition:"all 0.2s" }}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setAthlete(a=>!a)}
+              style={{ background:athlete?C.gold:"rgba(255,255,255,0.08)", color:athlete?C.dark:"#fff", border:`1px solid ${athlete?C.gold:"rgba(255,255,255,0.2)"}`, borderRadius:"10px", padding:"7px 14px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:"12px", transition:"all 0.2s" }}>
+              🏆 {athlete ? "ATHLETE ✓" : "ATHLETE"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ============================================================
+// COMPONENT: NOTIFICATION MODAL
+// ============================================================
+function NotifModal({ notif, onDismiss, onXP }) {
+  if (!notif) return null;
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(26,10,46,0.8)", zIndex:1000, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"20px", backdropFilter:"blur(4px)" }}>
+      <style>{"@keyframes slideUp2{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}"}</style>
+      <div style={{ background:"#fff", borderRadius:"20px", padding:"24px", width:"100%", maxWidth:"440px", animation:"slideUp2 0.3s ease-out", boxShadow:"0 -8px 48px rgba(75,24,105,0.35)" }}>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:"14px", marginBottom:"18px" }}>
+          <div style={{ width:"48px", height:"48px", borderRadius:"50%", overflow:"hidden", border:`2.5px solid ${C.gold}`, flexShrink:0 }}>
+            <img src={shaniquaAvatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top" }} />
+          </div>
+          <div style={{ flex:1 }}>
+            <p style={{ fontFamily:"'Playfair Display',serif", fontWeight:700, fontSize:"15px", color:C.dark, margin:"0 0 6px" }}>Shaniqua — 3-Hour Check-In</p>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"14px", color:"#374151", margin:0, lineHeight:1.6 }}>{notif.text}</p>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:"10px" }}>
+          <button onClick={()=>{ onXP(XP_TABLE.study_session,"Check-in acknowledged"); onDismiss(); }}
+            style={{ flex:1, background:`linear-gradient(135deg,${C.purple},${C.dark})`, color:"#fff", border:"none", borderRadius:"12px", padding:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:"13px" }}>
+            ✓ Handled It! +50 XP
+          </button>
+          <button onClick={onDismiss}
+            style={{ background:"#F3E8FF", color:C.purple, border:"none", borderRadius:"12px", padding:"12px 18px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:"13px" }}>
+            Later
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── END OF PART 2 ── (DashboardTab and beyond follow in Part 3)

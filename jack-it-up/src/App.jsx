@@ -493,4 +493,155 @@ function NotifModal({ notif, onDismiss, onXP }) {
   );
 }
 
-// ── END OF PART 2 ── (DashboardTab and beyond follow in Part 3)
+// ============================================================
+// COMPONENT: DASHBOARD TAB
+// ============================================================
+function DashboardTab({ xp, badges, athlete, onEarnXP, dormHacks, setDormHacks }) {
+  const toggleHack = (id) => {
+    setDormHacks(prev => {
+      const was = prev.find(h => h.id === id);
+      if (!was?.done) onEarnXP(XP_TABLE.dorm_hack, `Dorm hack: ${was?.title}`);
+      const updated = prev.map(h => h.id === id ? { ...h, done: !h.done } : h);
+      if (updated.every(h => h.done) && !badges.includes("dorm_boss")) onEarnXP(100, "All Dorm Hacks complete! DORM BOSS!");
+      return updated;
+    });
+  };
+
+  const actions = [
+    { label:"✅ Study Session Done",    amt:XP_TABLE.study_session },
+    { label:"🏋️ Gym Visit Logged",      amt:XP_TABLE.gym_visit     },
+    { label:"📋 Club Event Check-In",   amt:XP_TABLE.club_check    },
+    { label:"🔮 Pre-Reg Simulator Used",amt:XP_TABLE.register_sim  },
+  ];
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"20px" }}>
+
+      {/* Hero Banner */}
+      <div style={{ borderRadius:"20px", overflow:"hidden", position:"relative", boxShadow:"0 12px 48px rgba(26,10,46,0.45)", border:`2.5px solid ${C.gold}` }}>
+        <img src={heroBanner} alt="Jack-it-UP! Your SFA Secret Weapon" style={{ width:"100%", display:"block", maxHeight:"340px", objectFit:"cover", objectPosition:"center top" }} />
+        <div style={{ position:"absolute", bottom:0, left:0, right:0, background:"linear-gradient(to top, rgba(26,10,46,0.92) 0%, rgba(26,10,46,0.5) 60%, transparent 100%)", padding:"20px 24px 16px" }}>
+          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between" }}>
+            <div>
+              <p style={{ fontFamily:"'Playfair Display',serif", fontWeight:900, fontSize:"26px", color:C.gold, margin:0, lineHeight:1.1, textShadow:"0 2px 12px rgba(0,0,0,0.6)" }}>
+                Jack-it-<span style={{ color:"#fff" }}>UP!</span>
+              </p>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"11px", color:"rgba(255,255,255,0.7)", margin:"4px 0 0", letterSpacing:"2px", textTransform:"uppercase" }}>Your SFA Secret Weapon</p>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:"6px" }}>
+              <div style={{ background:C.gold, borderRadius:"10px", padding:"5px 14px", display:"flex", alignItems:"center", gap:"6px" }}>
+                <span style={{ fontFamily:"'Playfair Display',serif", fontWeight:900, fontSize:"18px", color:C.dark }}>{xp}</span>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"9px", color:`${C.dark}99`, fontWeight:700, letterSpacing:"1.5px" }}>JACK XP</span>
+              </div>
+              <div style={{ display:"flex", gap:"4px" }}>
+                {ALL_BADGES.filter(b => badges.includes(b.id)).slice(-4).map(b => (
+                  <span key={b.id} title={b.name} style={{ fontSize:"16px", filter:"drop-shadow(0 1px 4px rgba(0,0,0,0.5))" }}>{b.icon}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <XPSystem xp={xp} badges={badges} />
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"20px" }}>
+
+        {/* Quick XP */}
+        <div style={{ background:"#fff", borderRadius:"16px", border:"1px solid #E9D5FF", overflow:"hidden" }}>
+          <div style={{ background:`linear-gradient(135deg,${C.dark},${C.purple})`, padding:"14px 20px" }}>
+            <h3 style={{ fontFamily:"'Playfair Display',serif", color:"#fff", fontSize:"16px", margin:0, fontWeight:900 }}>⚡ Earn XP Today</h3>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", color:"rgba(255,255,255,0.5)", fontSize:"10px", margin:"2px 0 0", letterSpacing:"1px" }}>TAP TO LOG ACTIVITY</p>
+          </div>
+          <div style={{ padding:"16px", display:"flex", flexDirection:"column", gap:"8px" }}>
+            {actions.map(a => (
+              <button key={a.label} onClick={() => onEarnXP(a.amt, a.label)}
+                style={{ background:"#F9F5FF", border:"1.5px solid #E9D5FF", borderRadius:"10px", padding:"12px 16px", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", textAlign:"left", transition:"all 0.15s", fontFamily:"'DM Sans',sans-serif" }}
+                onMouseEnter={e => { e.currentTarget.style.background="#F3E8FF"; e.currentTarget.style.borderColor=C.purple; }}
+                onMouseLeave={e => { e.currentTarget.style.background="#F9F5FF"; e.currentTarget.style.borderColor="#E9D5FF"; }}>
+                <span style={{ fontSize:"13px", color:C.dark, fontWeight:600 }}>{a.label}</span>
+                <Pill label={`+${a.amt} XP`} color={C.dark} bg={C.gold} />
+              </button>
+            ))}
+            {athlete && (
+              <button onClick={() => onEarnXP(XP_TABLE.gym_visit, "Study Hall logged")}
+                style={{ background:`${C.gold}15`, border:`1.5px solid ${C.gold}50`, borderRadius:"10px", padding:"12px 16px", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", textAlign:"left" }}>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"13px", color:C.dark, fontWeight:600 }}>🏆 Study Hall Logged</span>
+                <Pill label={`+${XP_TABLE.gym_visit} XP`} color={C.dark} bg={C.gold} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Badge Wall */}
+        <div style={{ background:"#fff", borderRadius:"16px", border:"1px solid #E9D5FF", overflow:"hidden" }}>
+          <div style={{ background:`linear-gradient(135deg,${C.gold},${C.goldLight})`, padding:"14px 20px" }}>
+            <h3 style={{ fontFamily:"'Playfair Display',serif", color:C.dark, fontSize:"16px", margin:0, fontWeight:900 }}>🏅 Badge Collection</h3>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", color:`${C.dark}70`, fontSize:"10px", margin:"2px 0 0", letterSpacing:"1px" }}>{badges.length}/{ALL_BADGES.length} UNLOCKED</p>
+          </div>
+          <div style={{ padding:"14px", overflowY:"auto", maxHeight:"220px" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px" }}>
+              {ALL_BADGES.map(b => {
+                const earned = badges.includes(b.id);
+                return (
+                  <div key={b.id} title={b.desc} style={{ background:earned?"#F9F5FF":"#fafafa", border:`1.5px solid ${earned?"#E9D5FF":"#f0f0f0"}`, borderRadius:"10px", padding:"10px 12px", opacity:earned?1:0.45, transition:"all 0.2s" }}>
+                    <p style={{ fontSize:"20px", margin:"0 0 4px" }}>{b.icon}</p>
+                    <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"11px", fontWeight:700, color:earned?C.purple:"#9ca3af", margin:"0 0 2px" }}>{b.name}</p>
+                    <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"9px", color:"#9ca3af", margin:0, lineHeight:1.4 }}>{b.desc}</p>
+                    {b.notifyParent && earned && <Pill label="📧 Parent Notified" color="#16a34a" bg="#d1fae5" style={{ marginTop:"4px" }} />}
+                    {!earned && <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"9px", color:C.gold, margin:"4px 0 0", fontWeight:700 }}>{b.xpReq} XP</p>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Dorm Hacks */}
+      <div style={{ background:"#fff", borderRadius:"16px", border:"1px solid #E9D5FF", overflow:"hidden" }}>
+        <div style={{ background:`linear-gradient(135deg,#0F4C81,#1565C0)`, padding:"14px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            <h3 style={{ fontFamily:"'Playfair Display',serif", color:"#fff", fontSize:"16px", margin:0, fontWeight:900 }}>🏠 Dorm Life Hacks</h3>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", color:"rgba(255,255,255,0.55)", fontSize:"10px", margin:"2px 0 0" }}>+20 XP each · +100 bonus for all 5 · Tap to complete</p>
+          </div>
+          {dormHacks.every(h => h.done) && <Pill label="🏅 DORM BOSS!" color={C.dark} bg={C.gold} />}
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr" }}>
+          {dormHacks.map((h, i) => (
+            <div key={h.id} onClick={() => toggleHack(h.id)}
+              style={{ padding:"16px 20px", cursor:"pointer", background:h.done?"#F0FDF4":"#fff", borderBottom:i<3?"1px solid #F3E8FF":"none", borderRight:i%2===0?"1px solid #F3E8FF":"none", transition:"background 0.2s", display:"flex", gap:"12px", alignItems:"flex-start" }}>
+              <div style={{ width:"22px", height:"22px", borderRadius:"6px", border:`2px solid ${h.done?C.green:C.purple}`, background:h.done?C.green:"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:"2px", transition:"all 0.2s" }}>
+                {h.done && <span style={{ color:"#fff", fontSize:"13px", fontWeight:900 }}>✓</span>}
+              </div>
+              <div>
+                <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:"13px", color:h.done?C.green:C.dark, margin:"0 0 3px" }}>{h.icon} {h.title}</p>
+                <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"11px", color:"#6b7280", margin:0, lineHeight:1.5 }}>{h.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Study Science */}
+      <div style={{ background:`linear-gradient(135deg,${C.ink},#1a2744)`, borderRadius:"16px", padding:"22px 26px" }}>
+        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"10px", color:`${C.gold}80`, margin:"0 0 8px", letterSpacing:"1.5px", textTransform:"uppercase" }}>📊 5-Year Data (SFA 1101 Research)</p>
+        <p style={{ fontFamily:"'Playfair Display',serif", fontSize:"18px", color:"#fff", margin:"0 0 6px", fontWeight:700, lineHeight:1.4 }}>Active Recall outperforms re-reading by 50%+ on 30-day retention tests.</p>
+        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"13px", color:"rgba(255,255,255,0.55)", margin:"0 0 14px", lineHeight:1.7 }}>
+          Close your notes. Ask yourself what you just learned. Answer out loud. Check your accuracy. Repeat.
+          Combine with Spaced Repetition: review at Day 1 → Day 3 → Day 7 → Day 21 for permanent encoding.
+        </p>
+        <div style={{ display:"flex", gap:"16px", flexWrap:"wrap" }}>
+          {[["📖","Active Recall","50% better retention"],["⏳","Spaced Rep.","4× longer memory"],["😴","Sleep 7–9 hrs","GPA+0.5 average"],["🧠","Pomodoro 25/5","Peak focus cycles"]].map(([icon,key,val]) => (
+            <div key={key} style={{ background:"rgba(255,255,255,0.06)", borderRadius:"10px", padding:"10px 14px", textAlign:"center" }}>
+              <p style={{ fontSize:"20px", margin:"0 0 4px" }}>{icon}</p>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"11px", fontWeight:700, color:C.goldLight, margin:0 }}>{key}</p>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"10px", color:"rgba(255,255,255,0.4)", margin:0 }}>{val}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+}
